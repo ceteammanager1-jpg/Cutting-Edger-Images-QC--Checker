@@ -264,120 +264,7 @@
 <script>
     const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQac2ySXFAosTOOt1hEJPrW_sORv65t1aueF15zt2VGTcfnnrFlCgOONS2mCFBg3o_rWq3wHJzT8UTr/pub?output=csv";
 
-    // Instant Local Backup Database
-    const BACKUP_DATABASE = {
-        "Clipping": {
-            "Clipping Aslist": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Ecom Masking": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "335780": {
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Tabletop - Overview": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Montage - Verpackung": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "360 View": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "202060": {
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Hanger": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "208041": {
-            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "301271": {
-            "flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "On Model LookBook": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "331777": {
-            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "ecom": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Ai_RP_MAnnequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "301981": {
-            "_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "301283": {
-            "Variants_flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Table Top": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Table Top_300": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Table Top_150": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 150, checkPath: false, targetPathName: "" },
-            "Variants_Table Top_150": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 150, checkPath: false, targetPathName: "" },
-            "Shoes": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Shoes": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "342753": {
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "302907": {
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Rejection": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "329685": {
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "337618": {
-            "variants_Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "302418": {
-            "Bust": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "301093": {
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "330868": {
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "variants_Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "322669": {
-            "9 path": { ext: [".tif",".tiff",".psd"], width: 4689, height: 6720, dpi: 300, checkPath: true, targetPathName: "Path 1" }
-        },
-        "334368": {
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_On model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "On Model recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Tabletop recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Mannequin recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "302113": {
-            "Variants_On model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "1021127_1021018": {
-            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        },
-        "320907": {
-            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
-            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
-        }
-    };
-
-    let JOB_DATABASE = JSON.parse(JSON.stringify(BACKUP_DATABASE));
+    let JOB_DATABASE = {};
     let SELECTED_JOB_ID = "";
 
     const jobSearchInput = document.getElementById('jobSearchInput');
@@ -387,21 +274,18 @@
     const folderInput = document.getElementById('folderInput');
     const syncStatus = document.getElementById('syncStatus');
 
-    // Render Initial UI
-    initJobIds();
-
     async function fetchLiveRules(showAlert = false) {
         syncStatus.textContent = "Syncing with Google Sheets...";
         syncStatus.style.color = "#00f2fe";
 
         try {
-            const response = await fetch(GOOGLE_SHEET_CSV_URL + "&t=" + new Date().getTime());
+            const response = await fetch(GOOGLE_SHEET_CSV_URL + "&cacheBust=" + Date.now());
             if (!response.ok) throw new Error("HTTP error " + response.status);
             
             const text = await response.text();
             if (text && text.includes(",")) {
                 parseCSVData(text);
-                initJobIds(jobSearchInput.value);
+                initJobIds(jobSearchInput.value.replace("JOB ID:", "").trim());
                 syncStatus.textContent = "Google Sheets Connected (Live)";
                 syncStatus.style.color = "#2ecc71";
                 if (showAlert) alert("🎉 Success! Rules updated live from Google Sheets!");
@@ -409,19 +293,22 @@
                 throw new Error("Invalid CSV format");
             }
         } catch (err) {
-            console.warn("Live sync error, using backup DB:", err);
-            syncStatus.textContent = "Using Local Backup Rules";
-            syncStatus.style.color = "#f39c12";
-            if (showAlert) alert("⚠ Could not fetch from Google Sheets. Using Local Backup.");
+            console.warn("Live sync error:", err);
+            syncStatus.textContent = "Google Sheets Sync Failed";
+            syncStatus.style.color = "#e74c3c";
+            if (showAlert) alert("⚠ Could not fetch from Google Sheets.");
         }
     }
 
     function parseCSVData(csvText) {
-        const lines = csvText.trim().split('\n');
+        const lines = csvText.split(/\r?\n/);
         let newDb = {};
 
         for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            const row = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
             if (row.length < 6) continue;
 
             const jobId = row[0];
@@ -429,8 +316,10 @@
             if (!jobId || !presetName) continue;
 
             const exts = row[2].split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
-            const width = parseInt(row[3]) || 2500;
-            const height = parseInt(row[4]) || 3582;
+            
+            // Support multiple dimensions separated by '/'
+            const widths = row[3].split('/').map(w => parseInt(w.trim()) || 0);
+            const heights = row[4].split('/').map(h => parseInt(h.trim()) || 0);
             const dpi = parseInt(row[5]) || 300;
             const checkPath = (row[6] || '').toUpperCase() === 'TRUE';
             const targetPathName = row[7] || '';
@@ -439,8 +328,10 @@
 
             newDb[jobId][presetName] = {
                 ext: exts,
-                width: width,
-                height: height,
+                widths: widths,
+                heights: heights,
+                rawWidthStr: row[3],
+                rawHeightStr: row[4],
                 dpi: dpi,
                 checkPath: checkPath,
                 targetPathName: targetPathName
@@ -452,7 +343,6 @@
         }
     }
 
-    // Scrollable & Filtered Dropdown Populator
     function initJobIds(filterText = "") {
         jobDropdownList.innerHTML = "";
         const allJobIds = Object.keys(JOB_DATABASE);
@@ -481,7 +371,6 @@
             jobDropdownList.appendChild(item);
         });
 
-        // Set default selection if none selected
         if (!SELECTED_JOB_ID || !JOB_DATABASE[SELECTED_JOB_ID]) {
             selectJobId(filteredJobIds[0]);
         }
@@ -493,9 +382,8 @@
         updatePresets();
     }
 
-    // Dropdown Show/Hide Event Listeners
     jobSearchInput.addEventListener('focus', () => {
-        jobSearchInput.value = ""; // Clear for quick search
+        jobSearchInput.value = "";
         initJobIds("");
         jobDropdownList.style.display = 'block';
     });
@@ -505,7 +393,6 @@
         jobDropdownList.style.display = 'block';
     });
 
-    // Close dropdown on outside click
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.custom-dropdown-container')) {
             jobDropdownList.style.display = 'none';
@@ -579,12 +466,24 @@
             try {
                 const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName);
                 
-                let dimPass = (meta.width === rules.width && meta.height === rules.height);
+                // Smart Dimension Matcher (Supports Multiple dimensions like Portrait/Landscape)
+                let dimPass = false;
+                for (let d = 0; d < rules.widths.length; d++) {
+                    const targetW = rules.widths[d];
+                    const targetH = rules.heights[d] || rules.heights[0];
+                    if (meta.width === targetW && meta.height === targetH) {
+                        dimPass = true;
+                        break;
+                    }
+                }
+
+                let expectedDimStr = rules.widths.map((w, idx) => `${w}x${rules.heights[idx] || rules.heights[0]}`).join(" or ");
+
                 checks.push({
                     label: "Dimensions",
                     val: `${meta.width} × ${meta.height} px`,
                     pass: dimPass,
-                    expected: `${rules.width}x${rules.height} px`
+                    expected: `${expectedDimStr} px`
                 });
                 if (!dimPass) overallPass = false;
 
