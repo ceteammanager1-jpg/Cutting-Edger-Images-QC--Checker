@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Image Criteria Inspector (Auto-Sync)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .header-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        h2 { margin: 0; color: #ffffff; font-size: 22px; }
+
+        .creator-card {
+            background: linear-gradient(135deg, #1f1c2c, #928dab);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            text-align: right;
+        }
+        .creator-title { font-size: 13px; font-weight: 700; color: #00f2fe; }
+        .creator-sub { font-size: 11px; color: #e0e0e0; margin-top: 2px; }
+        .creator-divider { border-top: 1px solid rgba(255, 255, 255, 0.2); margin: 3px 0; }
+
+        .sync-bar {
+            background: #1a233a;
+            border: 1px solid #2980b9;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        .sync-status { color: #00f2fe; font-weight: bold; }
+        .btn-sync {
+            background: #2980b9;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-sync:hover { background: #3498db; }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: flex-end;
+            margin-bottom: 20px;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        label { font-weight: bold; display: block; margin-bottom: 5px; font-size: 13px; color: #aaa; }
+        
+        select, input[type="file"], input[type="text"] {
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            font-size: 14px;
+            background-color: #333;
+            color: #fff;
+            outline: none;
+        }
+
+        .input-group { display: flex; flex-direction: column; position: relative; }
+
+        /* Custom Searchable Scrollable Dropdown Styling */
+        .custom-dropdown-container {
+            position: relative;
+            width: 220px;
+        }
+        .custom-dropdown-input {
+            width: 100%;
+            box-sizing: border-box;
+            cursor: pointer;
+            padding-right: 25px;
+        }
+        .dropdown-icon {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+            color: #aaa;
+            font-size: 11px;
+        }
+        .custom-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #252526;
+            border: 1px solid #00f2fe;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 999;
+            margin-top: 5px;
+            display: none;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+        }
+        /* Custom Scrollbar */
+        .custom-dropdown-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-dropdown-list::-webkit-scrollbar-track {
+            background: #1e1e1e;
+            border-radius: 0 6px 6px 0;
+        }
+        .custom-dropdown-list::-webkit-scrollbar-thumb {
+            background: #00f2fe;
+            border-radius: 4px;
+        }
+        .dropdown-item {
+            padding: 9px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #e0e0e0;
+            border-bottom: 1px solid #333;
+            transition: background 0.15s ease;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover, .dropdown-item.selected {
+            background-color: #00f2fe;
+            color: #121212;
+            font-weight: bold;
+        }
+
+        .stats-dashboard { display: flex; gap: 15px; margin-bottom: 20px; }
+        .stat-card { flex: 1; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; color: #fff; }
+        .stat-total { background-color: #2980b9; }
+        .stat-pass { background-color: #27ae60; }
+        .stat-fail { background-color: #c0392b; }
+
+        .image-card {
+            background: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            padding: 15px;
+        }
+        .card-header {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed #444;
+            display: flex;
+            justify-content: space-between;
+        }
+        .card-header.fail-title { color: #e74c3c; }
+
+        .criteria-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .criteria-table td { padding: 6px 10px; border-bottom: 1px solid #333; }
+        .col-name { color: #b0b0b0; width: 35%; }
+        .col-val { text-align: right; font-family: monospace; }
+        .status-icon { display: inline-block; margin-left: 8px; font-weight: bold; }
+        .icon-pass { color: #2ecc71; }
+        .icon-fail { color: #e74c3c; }
+        
+        .no-issues-msg {
+            text-align: center;
+            color: #2ecc71;
+            padding: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #1a2e22;
+            border-radius: 8px;
+            border: 1px solid #27ae60;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-box">
+        <h2>📸 Detailed Image Criteria Inspector</h2>
+        
+        <div class="creator-card">
+            <div class="creator-title">✨ Created by - SAJIB HOSSAIN ✨</div>
+            <div class="creator-divider"></div>
+            <div class="creator-sub">Cutting Edger | Professional Photoshop Automation</div>
+        </div>
+    </div>
+
+    <!-- Auto Sync Info Bar -->
+    <div class="sync-bar">
+        <div>🔒 Rules Source: <span class="sync-status" id="syncStatus">Syncing with Google Sheets...</span></div>
+        <button class="btn-sync" onclick="fetchLiveRules(true)">🔄 Refresh Rules Now</button>
+    </div>
+    
+    <div class="controls">
+        <!-- Searchable & Scrollable Job ID Selector -->
+        <div class="input-group">
+            <label for="jobSearchInput">🔍 Select / Search Job ID:</label>
+            <div class="custom-dropdown-container">
+                <input type="text" id="jobSearchInput" class="custom-dropdown-input" placeholder="Type or Select Job..." autocomplete="off">
+                <span class="dropdown-icon">▼</span>
+                <div id="jobDropdownList" class="custom-dropdown-list"></div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="preset">Select Category:</label>
+            <select id="preset" style="min-width: 180px;">
+                <option value="">Loading Categories...</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="fileInput">Option 1: Select Files</label>
+            <input type="file" id="fileInput" multiple accept="image/*,.tif,.tiff,.psd">
+        </div>
+
+        <div class="input-group">
+            <label for="folderInput">Option 2: Select Full Folder</label>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div class="stats-dashboard">
+        <div class="stat-card stat-total" id="cardTotal">Total Files: 0</div>
+        <div class="stat-card stat-pass" id="cardPass">Passed: 0</div>
+        <div class="stat-card stat-fail" id="cardFail">Failed: 0</div>
+    </div>
+
+    <div id="reportContainer">
+        <div style="text-align: center; color: #777; padding: 40px;">
+            👉 Select Job ID, Category, and choose images/folder to start inspecting...
+        </div>
+    </div>
+</div>
+
+<script>
+    const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQac2ySXFAosTOOt1hEJPrW_sORv65t1aueF15zt2VGTcfnnrFlCgOONS2mCFBg3o_rWq3wHJzT8UTr/pub?output=csv";
+
+    // Instant Local Backup Database
+    const BACKUP_DATABASE = {
+        "Clipping": {
+            "Clipping Aslist": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Ecom Masking": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "335780": {
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Tabletop - Overview": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Montage - Verpackung": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "360 View": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "202060": {
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Hanger": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "208041": {
+            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "301271": {
+            "flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "On Model LookBook": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "331777": {
+            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "ecom": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Ai_RP_MAnnequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "301981": {
+            "_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "301283": {
+            "Variants_flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Table Top": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Table Top_300": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Table Top_150": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 150, checkPath: false, targetPathName: "" },
+            "Variants_Table Top_150": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 150, checkPath: false, targetPathName: "" },
+            "Shoes": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Shoes": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "342753": {
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "302907": {
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Rejection": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "329685": {
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "337618": {
+            "variants_Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "variants_On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "On Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "302418": {
+            "Bust": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "301093": {
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "330868": {
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "variants_Flat": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "322669": {
+            "9 path": { ext: [".tif",".tiff",".psd"], width: 4689, height: 6720, dpi: 300, checkPath: true, targetPathName: "Path 1" }
+        },
+        "334368": {
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_On model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "On Model recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Tabletop recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Mannequin recolor": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "302113": {
+            "Variants_On model": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Variants_Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "1021127_1021018": {
+            "Variants_Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        },
+        "320907": {
+            "Mannequin": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Flats": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" },
+            "Tabletop": { ext: [".jpg",".jpeg",".tif",".psd"], width: 2500, height: 3582, dpi: 300, checkPath: false, targetPathName: "" }
+        }
+    };
+
+    let JOB_DATABASE = JSON.parse(JSON.stringify(BACKUP_DATABASE));
+    let SELECTED_JOB_ID = "";
+
+    const jobSearchInput = document.getElementById('jobSearchInput');
+    const jobDropdownList = document.getElementById('jobDropdownList');
+    const presetSelect = document.getElementById('preset');
+    const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
+    const syncStatus = document.getElementById('syncStatus');
+
+    // Render Initial UI
+    initJobIds();
+
+    async function fetchLiveRules(showAlert = false) {
+        syncStatus.textContent = "Syncing with Google Sheets...";
+        syncStatus.style.color = "#00f2fe";
+
+        try {
+            const response = await fetch(GOOGLE_SHEET_CSV_URL + "&t=" + new Date().getTime());
+            if (!response.ok) throw new Error("HTTP error " + response.status);
+            
+            const text = await response.text();
+            if (text && text.includes(",")) {
+                parseCSVData(text);
+                initJobIds(jobSearchInput.value);
+                syncStatus.textContent = "Google Sheets Connected (Live)";
+                syncStatus.style.color = "#2ecc71";
+                if (showAlert) alert("🎉 Success! Rules updated live from Google Sheets!");
+            } else {
+                throw new Error("Invalid CSV format");
+            }
+        } catch (err) {
+            console.warn("Live sync error, using backup DB:", err);
+            syncStatus.textContent = "Using Local Backup Rules";
+            syncStatus.style.color = "#f39c12";
+            if (showAlert) alert("⚠ Could not fetch from Google Sheets. Using Local Backup.");
+        }
+    }
+
+    function parseCSVData(csvText) {
+        const lines = csvText.trim().split('\n');
+        let newDb = {};
+
+        for (let i = 1; i < lines.length; i++) {
+            const row = lines[i].split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
+            if (row.length < 6) continue;
+
+            const jobId = row[0];
+            const presetName = row[1];
+            if (!jobId || !presetName) continue;
+
+            const exts = row[2].split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
+            const width = parseInt(row[3]) || 2500;
+            const height = parseInt(row[4]) || 3582;
+            const dpi = parseInt(row[5]) || 300;
+            const checkPath = (row[6] || '').toUpperCase() === 'TRUE';
+            const targetPathName = row[7] || '';
+
+            if (!newDb[jobId]) newDb[jobId] = {};
+
+            newDb[jobId][presetName] = {
+                ext: exts,
+                width: width,
+                height: height,
+                dpi: dpi,
+                checkPath: checkPath,
+                targetPathName: targetPathName
+            };
+        }
+
+        if (Object.keys(newDb).length > 0) {
+            JOB_DATABASE = newDb;
+        }
+    }
+
+    // Scrollable & Filtered Dropdown Populator
+    function initJobIds(filterText = "") {
+        jobDropdownList.innerHTML = "";
+        const allJobIds = Object.keys(JOB_DATABASE);
+        
+        const filteredJobIds = allJobIds.filter(id => 
+            id.toLowerCase().includes(filterText.toLowerCase().trim())
+        );
+
+        if (filteredJobIds.length === 0) {
+            jobDropdownList.innerHTML = "<div class='dropdown-item' style='color:#777;'>No Jobs Found</div>";
+            presetSelect.innerHTML = "<option value=''>N/A</option>";
+            return;
+        }
+
+        filteredJobIds.forEach(jobId => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            if (jobId === SELECTED_JOB_ID) item.classList.add('selected');
+            item.textContent = `JOB ID: ${jobId}`;
+
+            item.addEventListener('click', () => {
+                selectJobId(jobId);
+                jobDropdownList.style.display = 'none';
+            });
+
+            jobDropdownList.appendChild(item);
+        });
+
+        // Set default selection if none selected
+        if (!SELECTED_JOB_ID || !JOB_DATABASE[SELECTED_JOB_ID]) {
+            selectJobId(filteredJobIds[0]);
+        }
+    }
+
+    function selectJobId(jobId) {
+        SELECTED_JOB_ID = jobId;
+        jobSearchInput.value = `JOB ID: ${jobId}`;
+        updatePresets();
+    }
+
+    // Dropdown Show/Hide Event Listeners
+    jobSearchInput.addEventListener('focus', () => {
+        jobSearchInput.value = ""; // Clear for quick search
+        initJobIds("");
+        jobDropdownList.style.display = 'block';
+    });
+
+    jobSearchInput.addEventListener('input', (e) => {
+        initJobIds(e.target.value.replace("JOB ID:", "").trim());
+        jobDropdownList.style.display = 'block';
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.custom-dropdown-container')) {
+            jobDropdownList.style.display = 'none';
+            if (SELECTED_JOB_ID) {
+                jobSearchInput.value = `JOB ID: ${SELECTED_JOB_ID}`;
+            }
+        }
+    });
+
+    function updatePresets() {
+        const presets = JOB_DATABASE[SELECTED_JOB_ID];
+        presetSelect.innerHTML = "";
+
+        if (presets) {
+            Object.keys(presets).forEach(key => {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = key;
+                presetSelect.appendChild(opt);
+            });
+        }
+    }
+
+    fileInput.addEventListener('change', (e) => { folderInput.value = ""; processFiles(e.target.files); });
+    folderInput.addEventListener('change', (e) => { fileInput.value = ""; processFiles(e.target.files); });
+
+    async function processFiles(fileList) {
+        const selectedJob = SELECTED_JOB_ID;
+        const presetKey = presetSelect.value;
+        
+        if (!selectedJob || !presetKey || !JOB_DATABASE[selectedJob] || !JOB_DATABASE[selectedJob][presetKey]) {
+            alert("Please select a valid Job ID and Category.");
+            return;
+        }
+
+        const rules = JOB_DATABASE[selectedJob][presetKey];
+        const reportContainer = document.getElementById('reportContainer');
+        
+        const files = Array.from(fileList).filter(file => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            return ['jpg', 'jpeg', 'png', 'tif', 'tiff', 'psd'].includes(ext);
+        });
+
+        if (files.length === 0) {
+            reportContainer.innerHTML = `<div style="text-align:center; color:#e74c3c; padding:20px;">⚠️ No valid image or PSD files found.</div>`;
+            updateDashboard(0, 0, 0);
+            return;
+        }
+
+        reportContainer.innerHTML = "";
+        let totalPassed = 0;
+        let totalFailed = 0;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const fileExt = "." + file.name.split('.').pop().toLowerCase();
+            const formatName = fileExt.replace('.', '').toUpperCase();
+
+            let checks = [];
+            let overallPass = true;
+
+            const extPass = rules.ext.includes(fileExt);
+            checks.push({
+                label: "File Format / Extension",
+                val: `${formatName} (${fileExt})`,
+                pass: extPass,
+                expected: rules.ext.join(" / ")
+            });
+            if (!extPass) overallPass = false;
+
+            try {
+                const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName);
+                
+                let dimPass = (meta.width === rules.width && meta.height === rules.height);
+                checks.push({
+                    label: "Dimensions",
+                    val: `${meta.width} × ${meta.height} px`,
+                    pass: dimPass,
+                    expected: `${rules.width}x${rules.height} px`
+                });
+                if (!dimPass) overallPass = false;
+
+                const dpiPass = (meta.dpi === rules.dpi);
+                checks.push({
+                    label: "DPI / Resolution",
+                    val: meta.dpi ? `${meta.dpi} DPI` : "Unknown DPI",
+                    pass: dpiPass,
+                    expected: `${rules.dpi} DPI`
+                });
+                if (!dpiPass) overallPass = false;
+
+                if (rules.checkPath) {
+                    const targetNameStr = rules.targetPathName ? `"${rules.targetPathName}"` : "Any Path";
+                    let pathPass = meta.hasPath;
+                    let foundText = pathPass ? `Found (${meta.foundPaths.join(', ') || 'Available'})` : "Missing";
+
+                    checks.push({
+                        label: `Clipping Path (${targetNameStr})`,
+                        val: foundText,
+                        pass: pathPass,
+                        expected: `Path: ${targetNameStr}`
+                    });
+                    if (!pathPass) overallPass = false;
+                }
+
+            } catch (err) {
+                overallPass = false;
+                checks.push({
+                    label: "File Parsing",
+                    val: `Error: ${err.message}`,
+                    pass: false
+                });
+            }
+
+            if (overallPass) {
+                totalPassed++;
+            } else {
+                totalFailed++;
+                renderFailedCard(file.webkitRelativePath || file.name, checks);
+            }
+        }
+
+        if (totalFailed === 0 && totalPassed > 0) {
+            reportContainer.innerHTML = `<div class="no-issues-msg">🎉 All ${totalPassed} images passed all criteria perfectly! No issues found.</div>`;
+        }
+
+        updateDashboard(files.length, totalPassed, totalFailed);
+    }
+
+    function renderFailedCard(fileName, checks) {
+        const reportContainer = document.getElementById('reportContainer');
+        const card = document.createElement('div');
+        card.className = 'image-card';
+
+        let rowsHtml = '';
+        checks.forEach(c => {
+            const statusClass = c.pass ? 'icon-pass' : 'icon-fail';
+            const icon = c.pass ? '✔' : '❌';
+            const expectedText = (!c.pass && c.expected) ? ` <span style="color:#e74c3c; font-size:12px;">(Expected: ${c.expected})</span>` : '';
+
+            rowsHtml += `
+                <tr>
+                    <td class="col-name">${c.label}</td>
+                    <td class="col-val">${c.val}${expectedText} <span class="status-icon ${statusClass}">${icon}</span></td>
+                </tr>
+            `;
+        });
+
+        card.innerHTML = `
+            <div class="card-header fail-title">
+                <span>❌ ${fileName}</span>
+                <span>FAILED</span>
+            </div>
+            <table class="criteria-table">${rowsHtml}</table>
+        `;
+
+        reportContainer.appendChild(card);
+    }
+
+    function updateDashboard(total, pass, fail) {
+        document.getElementById('cardTotal').innerText = `Total Files: ${total}`;
+        document.getElementById('cardPass').innerText = `Passed: ${pass}`;
+        document.getElementById('cardFail').innerText = `Failed: ${fail}`;
+    }
+
+    function getFastMetadata(file, doPathCheck, targetPathName) {
+        return new Promise((resolve, reject) => {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+
+            if (ext === 'psd' || ext === 'tif' || ext === 'tiff') {
+                reader.onload = function(e) {
+                    try {
+                        const buffer = e.target.result;
+                        const view = new DataView(buffer);
+                        let width = 0, height = 0, dpi = 300;
+                        let hasPath = false;
+                        let foundPaths = [];
+
+                        if (ext === 'psd') {
+                            if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
+                            height = view.getUint32(14, false);
+                            width = view.getUint32(18, false);
+                        } else {
+                            const isLE = view.getUint16(0) === 0x4949;
+                            const ifdOffset = view.getUint32(4, isLE);
+                            const numEntries = view.getUint16(ifdOffset, isLE);
+                            for (let i = 0; i < numEntries; i++) {
+                                const entryOffset = ifdOffset + 2 + (i * 12);
+                                const tag = view.getUint16(entryOffset, isLE);
+                                if (tag === 256) width = getTifVal(view, entryOffset, isLE);
+                                else if (tag === 257) height = getTifVal(view, entryOffset, isLE);
+                            }
+                        }
+
+                        if (doPathCheck) {
+                            const bytes = new Uint8Array(buffer);
+                            const textDecoder = new TextDecoder('ascii');
+
+                            for (let i = 0; i < bytes.length - 20; i++) {
+                                if (bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
+                                    const resourceId = (bytes[i+4] << 8) | bytes[i+5];
+                                    if (resourceId >= 2000 && resourceId <= 2999) {
+                                        let nameLen = bytes[i+6];
+                                        let pathName = "";
+                                        if (nameLen > 0 && nameLen < 100) {
+                                            pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
+                                            foundPaths.push(pathName);
+                                        }
+
+                                        if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
+                                            hasPath = true;
+                                        } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
+                                            hasPath = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        resolve({ width, height, dpi, hasPath, foundPaths });
+                    } catch (err) { reject(new Error("File parsing failed.")); }
+                };
+                reader.readAsArrayBuffer(file.slice(0, 3 * 1024 * 1024));
+            } else {
+                const img = new Image();
+                img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, dpi: 300, hasPath: false, foundPaths: [] });
+                img.onerror = () => reject(new Error("Invalid Image format."));
+                img.src = URL.createObjectURL(file);
+            }
+        });
+    }
+
+    function getTifVal(view, entryOffset, isLE) {
+        const type = view.getUint16(entryOffset + 2, isLE);
+        if (type === 3) return view.getUint16(entryOffset + 8, isLE);
+        if (type === 4) return view.getUint32(entryOffset + 8, isLE);
+        return view.getUint16(entryOffset + 8, isLE);
+    }
+
+    fetchLiveRules();
+</script>
+
+</body>
+</html>
