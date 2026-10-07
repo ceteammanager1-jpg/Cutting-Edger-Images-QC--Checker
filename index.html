@@ -238,23 +238,27 @@
             const line = lines[i].trim();
             if (!line) continue;
 
-            const row = line.split(',').map(cell => cell.trim().replace(/^"|"$/g, ''));
-            if (row.length < 6) continue;
+            // Regex CSV Split to prevent commas inside quotes breaking columns
+            const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
+            const cleanRow = row.map(cell => cell.trim().replace(/^"|"$/g, ''));
+            
+            if (cleanRow.length < 2) continue;
 
-            const jobId = row[0];
-            const presetName = row[1];
+            const jobId = cleanRow[0];
+            const presetName = cleanRow[1];
             if (!jobId || !presetName) continue;
 
-            const exts = row[2].split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
+            const exts = (cleanRow[2] || '').split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
             
-            const rawWidthStr = row[3];
-            const rawHeightStr = row[4];
+            const rawWidthStr = cleanRow[3] || '';
+            const rawHeightStr = cleanRow[4] || '';
+            const dpi = parseInt(cleanRow[5]) || 300;
+            const checkPath = ((cleanRow[6] || '').toUpperCase() === 'TRUE');
             
-            const dpi = parseInt(row[5]) || 300;
-            const checkPath = (row[6] || '').toUpperCase() === 'TRUE';
-            const targetPathName = row[7] || '';
-            const colorProfile = row[8] ? row[8].trim() : '';
-            const backgroundColor = row[9] ? row[9].trim() : '';
+            // Robust Index Mapping for Columns 7, 8, 9
+            const targetPathName = cleanRow[7] ? cleanRow[7].trim() : '';
+            const colorProfile = cleanRow[8] ? cleanRow[8].trim() : '';
+            const backgroundColor = cleanRow[9] ? cleanRow[9].trim() : '';
 
             if (!newDb[jobId]) newDb[jobId] = {};
 
@@ -473,8 +477,8 @@
                     if (!profilePass) overallPass = false;
                 }
 
-                // 4. Background RGB Corner Check
-                if (rules.backgroundColor && rules.backgroundColor !== "") {
+                // 4. Background Color Corner Check (ONLY IF SPECIFIED IN SHEET)
+                if (rules.backgroundColor && rules.backgroundColor.trim() !== "") {
                     let reqParts = rules.backgroundColor.split('/').map(x => parseInt(x.trim()));
                     let detParts = meta.detectedBgColor.split('/').map(x => parseInt(x.trim()));
 
@@ -483,7 +487,7 @@
                         let diffR = Math.abs(reqParts[0] - detParts[0]);
                         let diffG = Math.abs(reqParts[1] - detParts[1]);
                         let diffB = Math.abs(reqParts[2] - detParts[2]);
-                        bgPass = (diffR <= 5 && diffG <= 5 && diffB <= 5);
+                        bgPass = (diffR === 0 && diffG === 0 && diffB === 0);
                     }
 
                     checks.push({
@@ -495,17 +499,26 @@
                     if (!bgPass) overallPass = false;
                 }
 
-                // 5. Clipping Path Check
+                // 5. Multiple Clipping Paths Matcher (e.g. "Path 1,Path 2,Path 3")
                 if (rules.checkPath) {
-                    const targetNameStr = rules.targetPathName ? `"${rules.targetPathName}"` : "Any Path";
-                    let pathPass = meta.hasPath;
-                    let foundText = pathPass ? `Found (${meta.foundPaths.join(', ') || 'Available'})` : "Missing";
+                    const reqPathsList = rules.targetPathName ? rules.targetPathName.split(',').map(p => p.trim().toLowerCase()) : [];
+                    let pathPass = false;
+
+                    if (reqPathsList.length === 0 || rules.targetPathName === "" || rules.targetPathName.toLowerCase() === "any") {
+                        pathPass = meta.hasPath;
+                    } else {
+                        // All listed paths must exist in image foundPaths
+                        const foundLower = meta.foundPaths.map(p => p.toLowerCase());
+                        pathPass = reqPathsList.every(req => foundLower.some(f => f.includes(req)));
+                    }
+
+                    let foundText = meta.foundPaths.length > 0 ? `Found (${meta.foundPaths.join(', ')})` : "Missing";
 
                     checks.push({
-                        label: `Clipping Path (${targetNameStr})`,
+                        label: `Clipping Path (${rules.targetPathName || 'Any'})`,
                         val: foundText,
                         pass: pathPass,
-                        expected: `Path: ${targetNameStr}`
+                        expected: rules.targetPathName || "Path Required"
                     });
                     if (!pathPass) overallPass = false;
                 }
@@ -586,7 +599,6 @@
                     let foundPaths = [];
                     let detectedProfile = "sRGB";
 
-                    // Dual Decoders for Multi-language & UTF-16 Profiles
                     const asciiDecoder = new TextDecoder('ascii');
                     const utf16Decoder = new TextDecoder('utf-16be');
 
@@ -608,7 +620,6 @@
                         detectedProfile = "sRGB";
                     }
 
-                    // TIF / PSD / JPG Binary Headers
                     if (ext === 'psd') {
                         if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file."));
                         height = view.getUint32(14, false);
@@ -682,17 +693,12 @@
                                     pathName = asciiDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
                                     foundPaths.push(pathName);
                                 }
-
-                                if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
-                                    hasPath = true;
-                                } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
-                                    hasPath = true;
-                                }
+                                hasPath = true;
                             }
                         }
                     }
 
-                    // Pixel Background Extraction
+                    // Unmanaged Raw Color Pixel Reader
                     const img = new Image();
                     const url = URL.createObjectURL(file);
                     img.onload = () => {
@@ -700,22 +706,12 @@
                             const canvas = document.createElement('canvas');
                             canvas.width = img.naturalWidth || width || 100;
                             canvas.height = img.naturalHeight || height || 100;
-                            const ctx = canvas.getContext('2d');
+                            
+                            const ctx = canvas.getContext('2d', { colorSpace: 'srgb', willReadFrequently: true });
                             ctx.drawImage(img, 0, 0);
 
-                            const pData = ctx.getImageData(2, 2, 5, 5).data;
-                            let rSum = 0, gSum = 0, bSum = 0, count = 0;
-                            for (let k = 0; k < pData.length; k += 4) {
-                                rSum += pData[k];
-                                gSum += pData[k+1];
-                                bSum += pData[k+2];
-                                count++;
-                            }
-
-                            const avgR = Math.round(rSum / count);
-                            const avgG = Math.round(gSum / count);
-                            const avgB = Math.round(bSum / count);
-                            const detectedBgColor = `${avgR}/${avgG}/${avgB}`;
+                            const pData = ctx.getImageData(0, 0, 1, 1).data;
+                            const detectedBgColor = `${pData[0]}/${pData[1]}/${pData[2]}`;
 
                             if (!width) width = img.naturalWidth;
                             if (!height) height = img.naturalHeight;
