@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detailed Image Criteria Inspector (Auto-Sync)</title>
+    <title>Detailed Image Criteria Inspector (Strict Auto-Sync)</title>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -454,9 +454,9 @@
             if (!extPass) overallPass = false;
 
             try {
-                const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName, rules.colorProfile, rules.backgroundColor);
+                const meta = await getStrictMetadataAndPixels(file, rules.checkPath, rules.targetPathName);
                 
-                // Smart Dimension Engine (Supports exact sizes, '/' multiple sizes, & '>=' min long side)
+                // 1. Dimensions Check
                 let dimPass = false;
                 let expectedDimStr = "";
                 const maxDim = Math.max(meta.width, meta.height);
@@ -496,37 +496,53 @@
                 });
                 if (!dimPass) overallPass = false;
 
+                // 2. Strict DPI Check
                 const dpiPass = (meta.dpi === rules.dpi);
                 checks.push({
                     label: "DPI / Resolution",
-                    val: meta.dpi ? `${meta.dpi} DPI` : "Unknown DPI",
+                    val: meta.dpi ? `${meta.dpi} DPI` : "Unknown / Missing DPI",
                     pass: dpiPass,
                     expected: `${rules.dpi} DPI`
                 });
                 if (!dpiPass) overallPass = false;
 
+                // 3. Strict Color Profile Check
                 if (rules.colorProfile && rules.colorProfile !== "") {
-                    let profilePass = meta.detectedProfile.toLowerCase().includes(rules.colorProfile.toLowerCase());
+                    let reqProfLower = rules.colorProfile.toLowerCase();
+                    let detectedProfLower = meta.detectedProfile.toLowerCase();
+                    
+                    let profilePass = false;
+                    if (reqProfLower.includes("srgb") && detectedProfLower.includes("srgb")) profilePass = true;
+                    else if (reqProfLower.includes("eci") && detectedProfLower.includes("eci")) profilePass = true;
+                    else if (reqProfLower.includes("adobe") && detectedProfLower.includes("adobe")) profilePass = true;
+                    else if (detectedProfLower.includes(reqProfLower)) profilePass = true;
+
                     checks.push({
                         label: "Color Profile",
-                        val: meta.detectedProfile || "Unspecified",
+                        val: meta.detectedProfile || "Unspecified / Generic",
                         pass: profilePass,
                         expected: rules.colorProfile
                     });
                     if (!profilePass) overallPass = false;
                 }
 
+                // 4. Strict Corner Pixel Background Check
                 if (rules.backgroundColor && rules.backgroundColor !== "") {
-                    let bgPass = (meta.detectedBgColor.replace(/\s/g, '') === rules.backgroundColor.replace(/\s/g, ''));
+                    let reqBgClean = rules.backgroundColor.replace(/\s/g, '');
+                    let detectedBgClean = meta.detectedBgColor.replace(/\s/g, '');
+                    
+                    let bgPass = (reqBgClean === detectedBgClean);
+
                     checks.push({
-                        label: "Background Color (RGB)",
-                        val: meta.detectedBgColor || "N/A",
+                        label: "Background Color (Top-Left RGB)",
+                        val: meta.detectedBgColor || "Unable to read",
                         pass: bgPass,
                         expected: rules.backgroundColor
                     });
                     if (!bgPass) overallPass = false;
                 }
 
+                // 5. Clipping Path Check
                 if (rules.checkPath) {
                     const targetNameStr = rules.targetPathName ? `"${rules.targetPathName}"` : "Any Path";
                     let pathPass = meta.hasPath;
@@ -601,71 +617,130 @@
         document.getElementById('cardFail').innerText = `Failed: ${fail}`;
     }
 
-    function getFastMetadata(file, doPathCheck, targetPathName, reqProfile, reqBg) {
+    // High Precision Header + Canvas Pixel Engine
+    function getStrictMetadataAndPixels(file, doPathCheck, targetPathName) {
         return new Promise((resolve, reject) => {
             const ext = file.name.split('.').pop().toLowerCase();
             const reader = new FileReader();
 
-            if (ext === 'psd' || ext === 'tif' || ext === 'tiff') {
-                reader.onload = function(e) {
-                    try {
-                        const buffer = e.target.result;
-                        const view = new DataView(buffer);
-                        let width = 0, height = 0, dpi = 300;
-                        let hasPath = false;
-                        let foundPaths = [];
-                        let detectedProfile = reqProfile || "sRGB";
-                        let detectedBgColor = reqBg || "255/255/255";
+            reader.onload = function(e) {
+                try {
+                    const buffer = e.target.result;
+                    const view = new DataView(buffer);
+                    const bytes = new Uint8Array(buffer);
+                    const textDecoder = new TextDecoder('ascii');
 
-                        if (ext === 'psd') {
-                            if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
-                            height = view.getUint32(14, false);
-                            width = view.getUint32(18, false);
-                        } else {
-                            const isLE = view.getUint16(0) === 0x4949;
-                            const ifdOffset = view.getUint32(4, isLE);
-                            const numEntries = view.getUint16(ifdOffset, isLE);
-                            for (let i = 0; i < numEntries; i++) {
-                                const entryOffset = ifdOffset + 2 + (i * 12);
-                                const tag = view.getUint16(entryOffset, isLE);
-                                if (tag === 256) width = getTifVal(view, entryOffset, isLE);
-                                else if (tag === 257) height = getTifVal(view, entryOffset, isLE);
+                    let width = 0, height = 0, dpi = 72; // Strict DPI Parsing
+                    let hasPath = false;
+                    let foundPaths = [];
+                    let detectedProfile = "sRGB";
+
+                    // Binary Header Decode for PSD / TIF / JPG
+                    if (ext === 'psd') {
+                        if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
+                        height = view.getUint32(14, false);
+                        width = view.getUint32(18, false);
+                    } else if (ext === 'tif' || ext === 'tiff') {
+                        const isLE = view.getUint16(0) === 0x4949;
+                        const ifdOffset = view.getUint32(4, isLE);
+                        const numEntries = view.getUint16(ifdOffset, isLE);
+                        
+                        let xRes = 0, yRes = 0, resUnit = 2;
+                        for (let i = 0; i < numEntries; i++) {
+                            const entryOffset = ifdOffset + 2 + (i * 12);
+                            const tag = view.getUint16(entryOffset, isLE);
+                            if (tag === 256) width = getTifVal(view, entryOffset, isLE);
+                            else if (tag === 257) height = getTifVal(view, entryOffset, isLE);
+                            else if (tag === 282) { // XResolution
+                                const valOff = view.getUint32(entryOffset + 8, isLE);
+                                const num = view.getUint32(valOff, isLE);
+                                const den = view.getUint32(valOff + 4, isLE);
+                                if (den > 0) xRes = Math.round(num / den);
+                            } else if (tag === 296) { // ResolutionUnit
+                                resUnit = view.getUint16(entryOffset + 8, isLE);
                             }
                         }
+                        if (xRes > 0) dpi = (resUnit === 3) ? Math.round(xRes * 2.54) : xRes;
+                    } else if (ext === 'jpg' || ext === 'jpeg') {
+                        let offset = 2;
+                        while (offset < view.byteLength) {
+                            const marker = view.getUint16(offset, false);
+                            if (marker === 0xFFE0) { // APP0 JFIF DPI
+                                const densityUnits = view.getUint8(offset + 11);
+                                const xDensity = view.getUint16(offset + 12, false);
+                                if (xDensity > 0) dpi = (densityUnits === 2) ? Math.round(xDensity * 2.54) : xDensity;
+                            } else if (marker === 0xFFC0 || marker === 0xFFC2) {
+                                height = view.getUint16(offset + 5, false);
+                                width = view.getUint16(offset + 7, false);
+                                break;
+                            }
+                            offset += 2 + view.getUint16(offset + 2, false);
+                        }
+                    }
 
-                        const bytes = new Uint8Array(buffer);
-                        const textDecoder = new TextDecoder('ascii');
+                    // Strict ICC Profile Text Detection
+                    for (let i = 0; i < bytes.length - 20; i++) {
+                        if (bytes[i] === 0x61 && bytes[i+1] === 0x70 && bytes[i+2] === 0x70 || textDecoder.decode(bytes.subarray(i, i+6)).includes("eci") || textDecoder.decode(bytes.subarray(i, i+6)).includes("sRGB")) {
+                            const chunk = textDecoder.decode(bytes.subarray(i, i+35));
+                            if (chunk.toLowerCase().includes("ecirgb") || chunk.toLowerCase().includes("eci")) detectedProfile = "ECI-RGB";
+                            else if (chunk.toLowerCase().includes("srgb")) detectedProfile = "sRGB";
+                            else if (chunk.toLowerCase().includes("adobe")) detectedProfile = "Adobe RGB";
+                        }
 
-                        for (let i = 0; i < bytes.length - 20; i++) {
-                            if (doPathCheck && bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
-                                const resourceId = (bytes[i+4] << 8) | bytes[i+5];
-                                if (resourceId >= 2000 && resourceId <= 2999) {
-                                    let nameLen = bytes[i+6];
-                                    let pathName = "";
-                                    if (nameLen > 0 && nameLen < 100) {
-                                        pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
-                                        foundPaths.push(pathName);
-                                    }
+                        // Clipping Path Extraction
+                        if (doPathCheck && bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
+                            const resourceId = (bytes[i+4] << 8) | bytes[i+5];
+                            if (resourceId >= 2000 && resourceId <= 2999) {
+                                let nameLen = bytes[i+6];
+                                let pathName = "";
+                                if (nameLen > 0 && nameLen < 100) {
+                                    pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
+                                    foundPaths.push(pathName);
+                                }
 
-                                    if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
-                                        hasPath = true;
-                                    } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
-                                        hasPath = true;
-                                    }
+                                if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
+                                    hasPath = true;
+                                } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
+                                    hasPath = true;
                                 }
                             }
                         }
+                    }
 
-                        resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor });
-                    } catch (err) { reject(new Error("File parsing failed.")); }
-                };
-                reader.readAsArrayBuffer(file.slice(0, 3 * 1024 * 1024));
-            } else {
-                const img = new Image();
-                img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, dpi: 300, hasPath: false, foundPaths: [], detectedProfile: reqProfile || "sRGB", detectedBgColor: reqBg || "255/255/255" });
-                img.onerror = () => reject(new Error("Invalid Image format."));
-                img.src = URL.createObjectURL(file);
-            }
+                    // Canvas Corner Pixel Extraction (For Real Background RGB Reading)
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    img.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || width || 100;
+                            canvas.height = img.naturalHeight || height || 100;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+
+                            // Top-Left corner pixel (0,0)
+                            const p = ctx.getImageData(0, 0, 1, 1).data;
+                            const detectedBgColor = `${p[0]}/${p[1]}/${p[2]}`;
+
+                            if (!width) width = img.naturalWidth;
+                            if (!height) height = img.naturalHeight;
+
+                            URL.revokeObjectURL(url);
+                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor });
+                        } catch (err) {
+                            URL.revokeObjectURL(url);
+                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255" });
+                        }
+                    };
+                    img.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255" });
+                    };
+                    img.src = url;
+
+                } catch (err) { reject(new Error("File parsing failed.")); }
+            };
+            reader.readAsArrayBuffer(file.slice(0, 5 * 1024 * 1024)); // Expanded buffer
         });
     }
 
