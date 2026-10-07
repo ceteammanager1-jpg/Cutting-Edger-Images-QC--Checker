@@ -91,38 +91,13 @@
 
         .input-group { display: flex; flex-direction: column; position: relative; }
 
-        .custom-dropdown-container {
-            position: relative;
-            width: 220px;
-        }
-        .custom-dropdown-input {
-            width: 100%;
-            box-sizing: border-box;
-            cursor: pointer;
-            padding-right: 25px;
-        }
-        .dropdown-icon {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            pointer-events: none;
-            color: #aaa;
-            font-size: 11px;
-        }
+        .custom-dropdown-container { position: relative; width: 220px; }
+        .custom-dropdown-input { width: 100%; box-sizing: border-box; cursor: pointer; padding-right: 25px; }
+        .dropdown-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #aaa; font-size: 11px; }
         .custom-dropdown-list {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: #252526;
-            border: 1px solid #00f2fe;
-            border-radius: 6px;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 999;
-            margin-top: 5px;
-            display: none;
+            position: absolute; top: 100%; left: 0; right: 0; background: #252526;
+            border: 1px solid #00f2fe; border-radius: 6px; max-height: 200px;
+            overflow-y: auto; z-index: 999; margin-top: 5px; display: none;
             box-shadow: 0 8px 16px rgba(0,0,0,0.6);
         }
         .custom-dropdown-list::-webkit-scrollbar { width: 8px; }
@@ -130,19 +105,11 @@
         .custom-dropdown-list::-webkit-scrollbar-thumb { background: #00f2fe; border-radius: 4px; }
         
         .dropdown-item {
-            padding: 9px 12px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #e0e0e0;
-            border-bottom: 1px solid #333;
-            transition: background 0.15s ease;
+            padding: 9px 12px; cursor: pointer; font-size: 13px; color: #e0e0e0;
+            border-bottom: 1px solid #333; transition: background 0.15s ease;
         }
         .dropdown-item:last-child { border-bottom: none; }
-        .dropdown-item:hover, .dropdown-item.selected {
-            background-color: #00f2fe;
-            color: #121212;
-            font-weight: bold;
-        }
+        .dropdown-item:hover, .dropdown-item.selected { background-color: #00f2fe; color: #121212; font-weight: bold; }
 
         .stats-dashboard { display: flex; gap: 15px; margin-bottom: 20px; }
         .stat-card { flex: 1; padding: 12px; border-radius: 6px; text-align: center; font-weight: bold; color: #fff; }
@@ -150,22 +117,8 @@
         .stat-pass { background-color: #27ae60; }
         .stat-fail { background-color: #c0392b; }
 
-        .image-card {
-            background: #252526;
-            border: 1px solid #3c3c3c;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            padding: 15px;
-        }
-        .card-header {
-            font-weight: bold;
-            font-size: 16px;
-            margin-bottom: 10px;
-            padding-bottom: 5px;
-            border-bottom: 1px dashed #444;
-            display: flex;
-            justify-content: space-between;
-        }
+        .image-card { background: #252526; border: 1px solid #3c3c3c; border-radius: 8px; margin-bottom: 15px; padding: 15px; }
+        .card-header { font-weight: bold; font-size: 16px; margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px dashed #444; display: flex; justify-content: space-between; }
         .card-header.fail-title { color: #e74c3c; }
 
         .criteria-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -176,16 +129,7 @@
         .icon-pass { color: #2ecc71; }
         .icon-fail { color: #e74c3c; }
         
-        .no-issues-msg {
-            text-align: center;
-            color: #2ecc71;
-            padding: 30px;
-            font-size: 18px;
-            font-weight: bold;
-            background: #1a2e22;
-            border-radius: 8px;
-            border: 1px solid #27ae60;
-        }
+        .no-issues-msg { text-align: center; color: #2ecc71; padding: 30px; font-size: 18px; font-weight: bold; background: #1a2e22; border-radius: 8px; border: 1px solid #27ae60; }
     </style>
 </head>
 <body>
@@ -201,7 +145,6 @@
         </div>
     </div>
 
-    <!-- Auto Sync Info Bar -->
     <div class="sync-bar">
         <div>🔒 Rules Source: <span class="sync-status" id="syncStatus">Syncing with Google Sheets...</span></div>
         <button class="btn-sync" onclick="fetchLiveRules(true)">🔄 Refresh Rules Now</button>
@@ -235,7 +178,6 @@
         </div>
     </div>
 
-    <!-- Dashboard -->
     <div class="stats-dashboard">
         <div class="stat-card stat-total" id="cardTotal">Total Files: 0</div>
         <div class="stat-card stat-pass" id="cardPass">Passed: 0</div>
@@ -454,7 +396,7 @@
             if (!extPass) overallPass = false;
 
             try {
-                const meta = await getStrictMetadataAndPixels(file, rules.checkPath, rules.targetPathName);
+                const meta = await getUniversalMetadata(file, rules.checkPath, rules.targetPathName);
                 
                 // 1. Dimensions Check
                 let dimPass = false;
@@ -496,42 +438,53 @@
                 });
                 if (!dimPass) overallPass = false;
 
-                // 2. Strict DPI Check
+                // 2. DPI Check
                 const dpiPass = (meta.dpi === rules.dpi);
                 checks.push({
                     label: "DPI / Resolution",
-                    val: meta.dpi ? `${meta.dpi} DPI` : "Unknown / Missing DPI",
+                    val: meta.dpi ? `${meta.dpi} DPI` : "Unknown DPI",
                     pass: dpiPass,
                     expected: `${rules.dpi} DPI`
                 });
                 if (!dpiPass) overallPass = false;
 
-                // 3. Strict Color Profile Check
+                // 3. Multi-Encoding ICC Profile Matching
                 if (rules.colorProfile && rules.colorProfile !== "") {
-                    let reqProfLower = rules.colorProfile.toLowerCase();
-                    let detectedProfLower = meta.detectedProfile.toLowerCase();
+                    let reqProf = rules.colorProfile.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    let detProf = meta.detectedProfile.toLowerCase().replace(/[^a-z0-9]/g, '');
                     
                     let profilePass = false;
-                    if (reqProfLower.includes("srgb") && detectedProfLower.includes("srgb")) profilePass = true;
-                    else if (reqProfLower.includes("eci") && detectedProfLower.includes("eci")) profilePass = true;
-                    else if (reqProfLower.includes("adobe") && detectedProfLower.includes("adobe")) profilePass = true;
-                    else if (detectedProfLower.includes(reqProfLower)) profilePass = true;
+                    if (detProf.includes(reqProf) || reqProf.includes(detProf)) {
+                        profilePass = true;
+                    } else if (reqProf.includes("eci") && (detProf.includes("eci") || meta.rawText.includes("eci"))) {
+                        profilePass = true;
+                    } else if (reqProf.includes("srgb") && (detProf.includes("srgb") || meta.rawText.includes("srgb"))) {
+                        profilePass = true;
+                    } else if (reqProf.includes("adobe") && (detProf.includes("adobe") || meta.rawText.includes("adobe"))) {
+                        profilePass = true;
+                    }
 
                     checks.push({
                         label: "Color Profile",
-                        val: meta.detectedProfile || "Unspecified / Generic",
+                        val: meta.detectedProfile || "Unspecified",
                         pass: profilePass,
                         expected: rules.colorProfile
                     });
                     if (!profilePass) overallPass = false;
                 }
 
-                // 4. Strict Corner Pixel Background Check
+                // 4. Background RGB Corner Check
                 if (rules.backgroundColor && rules.backgroundColor !== "") {
-                    let reqBgClean = rules.backgroundColor.replace(/\s/g, '');
-                    let detectedBgClean = meta.detectedBgColor.replace(/\s/g, '');
-                    
-                    let bgPass = (reqBgClean === detectedBgClean);
+                    let reqParts = rules.backgroundColor.split('/').map(x => parseInt(x.trim()));
+                    let detParts = meta.detectedBgColor.split('/').map(x => parseInt(x.trim()));
+
+                    let bgPass = false;
+                    if (reqParts.length === 3 && detParts.length === 3) {
+                        let diffR = Math.abs(reqParts[0] - detParts[0]);
+                        let diffG = Math.abs(reqParts[1] - detParts[1]);
+                        let diffB = Math.abs(reqParts[2] - detParts[2]);
+                        bgPass = (diffR <= 5 && diffG <= 5 && diffB <= 5);
+                    }
 
                     checks.push({
                         label: "Background Color (Top-Left RGB)",
@@ -617,8 +570,7 @@
         document.getElementById('cardFail').innerText = `Failed: ${fail}`;
     }
 
-    // High Precision Header + Canvas Pixel Engine
-    function getStrictMetadataAndPixels(file, doPathCheck, targetPathName) {
+    function getUniversalMetadata(file, doPathCheck, targetPathName) {
         return new Promise((resolve, reject) => {
             const ext = file.name.split('.').pop().toLowerCase();
             const reader = new FileReader();
@@ -628,35 +580,76 @@
                     const buffer = e.target.result;
                     const view = new DataView(buffer);
                     const bytes = new Uint8Array(buffer);
-                    const textDecoder = new TextDecoder('ascii');
 
-                    let width = 0, height = 0, dpi = 72; // Strict DPI Parsing
+                    let width = 0, height = 0, dpi = 300;
                     let hasPath = false;
                     let foundPaths = [];
                     let detectedProfile = "sRGB";
 
-                    // Binary Header Decode for PSD / TIF / JPG
+                    // Dual Decoders for Multi-language & UTF-16 Profiles
+                    const asciiDecoder = new TextDecoder('ascii');
+                    const utf16Decoder = new TextDecoder('utf-16be');
+
+                    let fullTextAscii = "";
+                    let fullTextUtf16 = "";
+                    
+                    try { fullTextAscii = asciiDecoder.decode(bytes.subarray(0, Math.min(bytes.length, 5 * 1024 * 1024))); } catch(e){}
+                    try { fullTextUtf16 = utf16Decoder.decode(bytes.subarray(0, Math.min(bytes.length, 5 * 1024 * 1024))); } catch(e){}
+
+                    const combinedText = (fullTextAscii + " " + fullTextUtf16).toLowerCase();
+
+                    if (combinedText.includes("ecirgb") || combinedText.includes("eci rgb")) {
+                        detectedProfile = "ECI-RGB";
+                    } else if (combinedText.includes("adobe rgb") || combinedText.includes("adobergb")) {
+                        detectedProfile = "Adobe RGB";
+                    } else if (combinedText.includes("display p3")) {
+                        detectedProfile = "Display P3";
+                    } else if (combinedText.includes("srgb")) {
+                        detectedProfile = "sRGB";
+                    }
+
+                    // TIF / PSD / JPG Binary Headers
                     if (ext === 'psd') {
-                        if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
+                        if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file."));
                         height = view.getUint32(14, false);
                         width = view.getUint32(18, false);
+
+                        let resLen = view.getUint32(26, false);
+                        let pos = 30;
+                        const endPos = pos + resLen;
+
+                        while (pos < endPos && pos < view.byteLength - 12) {
+                            if (bytes[pos] === 0x38 && bytes[pos+1] === 0x42 && bytes[pos+2] === 0x49 && bytes[pos+3] === 0x4D) {
+                                const id = (bytes[pos+4] << 8) | bytes[pos+5];
+                                let nameLen = bytes[pos+6];
+                                let pad = (nameLen % 2 === 0) ? nameLen + 2 : nameLen + 1;
+                                let dataSize = view.getUint32(pos + 6 + pad, false);
+                                let dataPos = pos + 6 + pad + 4;
+
+                                if (id === 1005) {
+                                    let hRes = view.getUint32(dataPos, false) / 65536;
+                                    if (hRes > 0) dpi = Math.round(hRes);
+                                }
+                                pos = dataPos + dataSize + (dataSize % 2 === 0 ? 0 : 1);
+                            } else { pos++; }
+                        }
                     } else if (ext === 'tif' || ext === 'tiff') {
                         const isLE = view.getUint16(0) === 0x4949;
                         const ifdOffset = view.getUint32(4, isLE);
                         const numEntries = view.getUint16(ifdOffset, isLE);
                         
-                        let xRes = 0, yRes = 0, resUnit = 2;
+                        let xRes = 0, resUnit = 2;
                         for (let i = 0; i < numEntries; i++) {
                             const entryOffset = ifdOffset + 2 + (i * 12);
                             const tag = view.getUint16(entryOffset, isLE);
                             if (tag === 256) width = getTifVal(view, entryOffset, isLE);
                             else if (tag === 257) height = getTifVal(view, entryOffset, isLE);
-                            else if (tag === 282) { // XResolution
+                            else if (tag === 282) {
                                 const valOff = view.getUint32(entryOffset + 8, isLE);
                                 const num = view.getUint32(valOff, isLE);
                                 const den = view.getUint32(valOff + 4, isLE);
                                 if (den > 0) xRes = Math.round(num / den);
-                            } else if (tag === 296) { // ResolutionUnit
+                            } else if (tag === 296) {
                                 resUnit = view.getUint16(entryOffset + 8, isLE);
                             }
                         }
@@ -665,7 +658,7 @@
                         let offset = 2;
                         while (offset < view.byteLength) {
                             const marker = view.getUint16(offset, false);
-                            if (marker === 0xFFE0) { // APP0 JFIF DPI
+                            if (marker === 0xFFE0) {
                                 const densityUnits = view.getUint8(offset + 11);
                                 const xDensity = view.getUint16(offset + 12, false);
                                 if (xDensity > 0) dpi = (densityUnits === 2) ? Math.round(xDensity * 2.54) : xDensity;
@@ -678,23 +671,15 @@
                         }
                     }
 
-                    // Strict ICC Profile Text Detection
+                    // Clipping Path Search
                     for (let i = 0; i < bytes.length - 20; i++) {
-                        if (bytes[i] === 0x61 && bytes[i+1] === 0x70 && bytes[i+2] === 0x70 || textDecoder.decode(bytes.subarray(i, i+6)).includes("eci") || textDecoder.decode(bytes.subarray(i, i+6)).includes("sRGB")) {
-                            const chunk = textDecoder.decode(bytes.subarray(i, i+35));
-                            if (chunk.toLowerCase().includes("ecirgb") || chunk.toLowerCase().includes("eci")) detectedProfile = "ECI-RGB";
-                            else if (chunk.toLowerCase().includes("srgb")) detectedProfile = "sRGB";
-                            else if (chunk.toLowerCase().includes("adobe")) detectedProfile = "Adobe RGB";
-                        }
-
-                        // Clipping Path Extraction
                         if (doPathCheck && bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
                             const resourceId = (bytes[i+4] << 8) | bytes[i+5];
                             if (resourceId >= 2000 && resourceId <= 2999) {
                                 let nameLen = bytes[i+6];
                                 let pathName = "";
                                 if (nameLen > 0 && nameLen < 100) {
-                                    pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
+                                    pathName = asciiDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
                                     foundPaths.push(pathName);
                                 }
 
@@ -707,7 +692,7 @@
                         }
                     }
 
-                    // Canvas Corner Pixel Extraction (For Real Background RGB Reading)
+                    // Pixel Background Extraction
                     const img = new Image();
                     const url = URL.createObjectURL(file);
                     img.onload = () => {
@@ -718,29 +703,39 @@
                             const ctx = canvas.getContext('2d');
                             ctx.drawImage(img, 0, 0);
 
-                            // Top-Left corner pixel (0,0)
-                            const p = ctx.getImageData(0, 0, 1, 1).data;
-                            const detectedBgColor = `${p[0]}/${p[1]}/${p[2]}`;
+                            const pData = ctx.getImageData(2, 2, 5, 5).data;
+                            let rSum = 0, gSum = 0, bSum = 0, count = 0;
+                            for (let k = 0; k < pData.length; k += 4) {
+                                rSum += pData[k];
+                                gSum += pData[k+1];
+                                bSum += pData[k+2];
+                                count++;
+                            }
+
+                            const avgR = Math.round(rSum / count);
+                            const avgG = Math.round(gSum / count);
+                            const avgB = Math.round(bSum / count);
+                            const detectedBgColor = `${avgR}/${avgG}/${avgB}`;
 
                             if (!width) width = img.naturalWidth;
                             if (!height) height = img.naturalHeight;
 
                             URL.revokeObjectURL(url);
-                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor });
+                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor, rawText: combinedText });
                         } catch (err) {
                             URL.revokeObjectURL(url);
-                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255" });
+                            resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255", rawText: combinedText });
                         }
                     };
                     img.onerror = () => {
                         URL.revokeObjectURL(url);
-                        resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255" });
+                        resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor: "255/255/255", rawText: combinedText });
                     };
                     img.src = url;
 
                 } catch (err) { reject(new Error("File parsing failed.")); }
             };
-            reader.readAsArrayBuffer(file.slice(0, 5 * 1024 * 1024)); // Expanded buffer
+            reader.readAsArrayBuffer(file.slice(0, 10 * 1024 * 1024));
         });
     }
 
