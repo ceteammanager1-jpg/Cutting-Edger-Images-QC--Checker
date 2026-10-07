@@ -305,8 +305,9 @@
 
             const exts = row[2].split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
             
-            const widths = row[3].split('/').map(w => parseInt(w.trim()) || 0);
-            const heights = row[4].split('/').map(h => parseInt(h.trim()) || 0);
+            const rawWidthStr = row[3];
+            const rawHeightStr = row[4];
+            
             const dpi = parseInt(row[5]) || 300;
             const checkPath = (row[6] || '').toUpperCase() === 'TRUE';
             const targetPathName = row[7] || '';
@@ -317,8 +318,8 @@
 
             newDb[jobId][presetName] = {
                 ext: exts,
-                widths: widths,
-                heights: heights,
+                rawWidthStr: rawWidthStr,
+                rawHeightStr: rawHeightStr,
                 dpi: dpi,
                 checkPath: checkPath,
                 targetPathName: targetPathName,
@@ -455,27 +456,37 @@
             try {
                 const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName, rules.colorProfile, rules.backgroundColor);
                 
-                // Smart Dimension Check
+                // Smart Dimension Engine (Supports exact sizes, '/' multiple sizes, & '>=' min long side)
                 let dimPass = false;
+                let expectedDimStr = "";
                 const maxDim = Math.max(meta.width, meta.height);
-                
-                for (let d = 0; d < rules.widths.length; d++) {
-                    const targetW = rules.widths[d];
-                    const targetH = rules.heights[d] || rules.heights[0];
 
-                    if (meta.width === targetW && meta.height === targetH) {
-                        dimPass = true;
-                        break;
-                    } else if (targetW === targetH && maxDim === targetW) { // Long side logic
-                        dimPass = true;
-                        break;
+                if (rules.rawWidthStr.includes(">=")) {
+                    const minVal = parseInt(rules.rawWidthStr.replace(">=", "").trim()) || 5000;
+                    dimPass = (maxDim >= minVal);
+                    expectedDimStr = `Long side ≥ ${minVal}px`;
+                } else {
+                    const widths = rules.rawWidthStr.split('/').map(w => parseInt(w.trim()) || 0);
+                    const heights = rules.rawHeightStr.split('/').map(h => parseInt(h.trim()) || 0);
+
+                    for (let d = 0; d < widths.length; d++) {
+                        const targetW = widths[d];
+                        const targetH = heights[d] || heights[0];
+
+                        if (meta.width === targetW && meta.height === targetH) {
+                            dimPass = true;
+                            break;
+                        } else if (targetW === targetH && maxDim === targetW) {
+                            dimPass = true;
+                            break;
+                        }
                     }
-                }
 
-                let expectedDimStr = rules.widths.map((w, idx) => {
-                    const h = rules.heights[idx] || rules.heights[0];
-                    return (w === h) ? `Long Side ${w}px` : `${w}x${h}px`;
-                }).join(" or ");
+                    expectedDimStr = widths.map((w, idx) => {
+                        const h = heights[idx] || heights[0];
+                        return (w === h) ? `Long side ${w}px` : `${w}x${h}px`;
+                    }).join(" or ");
+                }
 
                 checks.push({
                     label: "Dimensions",
@@ -494,7 +505,6 @@
                 });
                 if (!dpiPass) overallPass = false;
 
-                // Any Custom Color Profile Check
                 if (rules.colorProfile && rules.colorProfile !== "") {
                     let profilePass = meta.detectedProfile.toLowerCase().includes(rules.colorProfile.toLowerCase());
                     checks.push({
@@ -506,7 +516,6 @@
                     if (!profilePass) overallPass = false;
                 }
 
-                // Any Custom Background RGB Color Check
                 if (rules.backgroundColor && rules.backgroundColor !== "") {
                     let bgPass = (meta.detectedBgColor.replace(/\s/g, '') === rules.backgroundColor.replace(/\s/g, ''));
                     checks.push({
@@ -605,8 +614,8 @@
                         let width = 0, height = 0, dpi = 300;
                         let hasPath = false;
                         let foundPaths = [];
-                        let detectedProfile = reqProfile || "sRGB"; // Dynamic Profile Parser
-                        let detectedBgColor = reqBg || "255/255/255"; // Dynamic BG RGB Parser
+                        let detectedProfile = reqProfile || "sRGB";
+                        let detectedBgColor = reqBg || "255/255/255";
 
                         if (ext === 'psd') {
                             if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
@@ -624,7 +633,6 @@
                             }
                         }
 
-                        // Parse Metadata Headers & Clipping Paths
                         const bytes = new Uint8Array(buffer);
                         const textDecoder = new TextDecoder('ascii');
 
