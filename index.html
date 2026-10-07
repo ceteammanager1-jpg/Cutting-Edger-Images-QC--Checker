@@ -238,7 +238,6 @@
             const line = lines[i].trim();
             if (!line) continue;
 
-            // Regex CSV Split to prevent commas inside quotes breaking columns
             const row = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
             const cleanRow = row.map(cell => cell.trim().replace(/^"|"$/g, ''));
             
@@ -255,7 +254,6 @@
             const dpi = parseInt(cleanRow[5]) || 300;
             const checkPath = ((cleanRow[6] || '').toUpperCase() === 'TRUE');
             
-            // Robust Index Mapping for Columns 7, 8, 9
             const targetPathName = cleanRow[7] ? cleanRow[7].trim() : '';
             const colorProfile = cleanRow[8] ? cleanRow[8].trim() : '';
             const backgroundColor = cleanRow[9] ? cleanRow[9].trim() : '';
@@ -477,7 +475,7 @@
                     if (!profilePass) overallPass = false;
                 }
 
-                // 4. Background Color Corner Check (ONLY IF SPECIFIED IN SHEET)
+                // 4. Background RGB Corner Check
                 if (rules.backgroundColor && rules.backgroundColor.trim() !== "") {
                     let reqParts = rules.backgroundColor.split('/').map(x => parseInt(x.trim()));
                     let detParts = meta.detectedBgColor.split('/').map(x => parseInt(x.trim()));
@@ -487,7 +485,7 @@
                         let diffR = Math.abs(reqParts[0] - detParts[0]);
                         let diffG = Math.abs(reqParts[1] - detParts[1]);
                         let diffB = Math.abs(reqParts[2] - detParts[2]);
-                        bgPass = (diffR === 0 && diffG === 0 && diffB === 0);
+                        bgPass = (diffR <= 2 && diffG <= 2 && diffB <= 2);
                     }
 
                     checks.push({
@@ -499,7 +497,7 @@
                     if (!bgPass) overallPass = false;
                 }
 
-                // 5. Multiple Clipping Paths Matcher (e.g. "Path 1,Path 2,Path 3")
+                // 5. Multiple Clipping Paths Matcher
                 if (rules.checkPath) {
                     const reqPathsList = rules.targetPathName ? rules.targetPathName.split(',').map(p => p.trim().toLowerCase()) : [];
                     let pathPass = false;
@@ -507,7 +505,6 @@
                     if (reqPathsList.length === 0 || rules.targetPathName === "" || rules.targetPathName.toLowerCase() === "any") {
                         pathPass = meta.hasPath;
                     } else {
-                        // All listed paths must exist in image foundPaths
                         const foundLower = meta.foundPaths.map(p => p.toLowerCase());
                         pathPass = reqPathsList.every(req => foundLower.some(f => f.includes(req)));
                     }
@@ -698,7 +695,8 @@
                         }
                     }
 
-                    // Unmanaged Raw Color Pixel Reader
+                    // Dynamic Raw Color Buffer Pixel Reader
+                    let detectedBgColor = "255/255/255";
                     const img = new Image();
                     const url = URL.createObjectURL(file);
                     img.onload = () => {
@@ -711,7 +709,7 @@
                             ctx.drawImage(img, 0, 0);
 
                             const pData = ctx.getImageData(0, 0, 1, 1).data;
-                            const detectedBgColor = `${pData[0]}/${pData[1]}/${pData[2]}`;
+                            detectedBgColor = `${pData[0]}/${pData[1]}/${pData[2]}`;
 
                             if (!width) width = img.naturalWidth;
                             if (!height) height = img.naturalHeight;
