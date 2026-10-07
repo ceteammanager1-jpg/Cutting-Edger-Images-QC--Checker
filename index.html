@@ -91,7 +91,6 @@
 
         .input-group { display: flex; flex-direction: column; position: relative; }
 
-        /* Custom Searchable Scrollable Dropdown Styling */
         .custom-dropdown-container {
             position: relative;
             width: 220px;
@@ -126,18 +125,10 @@
             display: none;
             box-shadow: 0 8px 16px rgba(0,0,0,0.6);
         }
-        /* Custom Scrollbar */
-        .custom-dropdown-list::-webkit-scrollbar {
-            width: 8px;
-        }
-        .custom-dropdown-list::-webkit-scrollbar-track {
-            background: #1e1e1e;
-            border-radius: 0 6px 6px 0;
-        }
-        .custom-dropdown-list::-webkit-scrollbar-thumb {
-            background: #00f2fe;
-            border-radius: 4px;
-        }
+        .custom-dropdown-list::-webkit-scrollbar { width: 8px; }
+        .custom-dropdown-list::-webkit-scrollbar-track { background: #1e1e1e; border-radius: 0 6px 6px 0; }
+        .custom-dropdown-list::-webkit-scrollbar-thumb { background: #00f2fe; border-radius: 4px; }
+        
         .dropdown-item {
             padding: 9px 12px;
             cursor: pointer;
@@ -146,9 +137,7 @@
             border-bottom: 1px solid #333;
             transition: background 0.15s ease;
         }
-        .dropdown-item:last-child {
-            border-bottom: none;
-        }
+        .dropdown-item:last-child { border-bottom: none; }
         .dropdown-item:hover, .dropdown-item.selected {
             background-color: #00f2fe;
             color: #121212;
@@ -219,7 +208,6 @@
     </div>
     
     <div class="controls">
-        <!-- Searchable & Scrollable Job ID Selector -->
         <div class="input-group">
             <label for="jobSearchInput">🔍 Select / Search Job ID:</label>
             <div class="custom-dropdown-container">
@@ -317,12 +305,13 @@
 
             const exts = row[2].split(';').map(e => e.trim().toLowerCase().startsWith('.') ? e.trim().toLowerCase() : '.' + e.trim().toLowerCase());
             
-            // Support multiple dimensions separated by '/'
             const widths = row[3].split('/').map(w => parseInt(w.trim()) || 0);
             const heights = row[4].split('/').map(h => parseInt(h.trim()) || 0);
             const dpi = parseInt(row[5]) || 300;
             const checkPath = (row[6] || '').toUpperCase() === 'TRUE';
             const targetPathName = row[7] || '';
+            const colorProfile = row[8] ? row[8].trim() : '';
+            const backgroundColor = row[9] ? row[9].trim() : '';
 
             if (!newDb[jobId]) newDb[jobId] = {};
 
@@ -330,11 +319,11 @@
                 ext: exts,
                 widths: widths,
                 heights: heights,
-                rawWidthStr: row[3],
-                rawHeightStr: row[4],
                 dpi: dpi,
                 checkPath: checkPath,
-                targetPathName: targetPathName
+                targetPathName: targetPathName,
+                colorProfile: colorProfile,
+                backgroundColor: backgroundColor
             };
         }
 
@@ -464,26 +453,35 @@
             if (!extPass) overallPass = false;
 
             try {
-                const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName);
+                const meta = await getFastMetadata(file, rules.checkPath, rules.targetPathName, rules.colorProfile, rules.backgroundColor);
                 
-                // Smart Dimension Matcher (Supports Multiple dimensions like Portrait/Landscape)
+                // Smart Dimension Check
                 let dimPass = false;
+                const maxDim = Math.max(meta.width, meta.height);
+                
                 for (let d = 0; d < rules.widths.length; d++) {
                     const targetW = rules.widths[d];
                     const targetH = rules.heights[d] || rules.heights[0];
+
                     if (meta.width === targetW && meta.height === targetH) {
+                        dimPass = true;
+                        break;
+                    } else if (targetW === targetH && maxDim === targetW) { // Long side logic
                         dimPass = true;
                         break;
                     }
                 }
 
-                let expectedDimStr = rules.widths.map((w, idx) => `${w}x${rules.heights[idx] || rules.heights[0]}`).join(" or ");
+                let expectedDimStr = rules.widths.map((w, idx) => {
+                    const h = rules.heights[idx] || rules.heights[0];
+                    return (w === h) ? `Long Side ${w}px` : `${w}x${h}px`;
+                }).join(" or ");
 
                 checks.push({
                     label: "Dimensions",
                     val: `${meta.width} × ${meta.height} px`,
                     pass: dimPass,
-                    expected: `${expectedDimStr} px`
+                    expected: expectedDimStr
                 });
                 if (!dimPass) overallPass = false;
 
@@ -495,6 +493,30 @@
                     expected: `${rules.dpi} DPI`
                 });
                 if (!dpiPass) overallPass = false;
+
+                // Any Custom Color Profile Check
+                if (rules.colorProfile && rules.colorProfile !== "") {
+                    let profilePass = meta.detectedProfile.toLowerCase().includes(rules.colorProfile.toLowerCase());
+                    checks.push({
+                        label: "Color Profile",
+                        val: meta.detectedProfile || "Unspecified",
+                        pass: profilePass,
+                        expected: rules.colorProfile
+                    });
+                    if (!profilePass) overallPass = false;
+                }
+
+                // Any Custom Background RGB Color Check
+                if (rules.backgroundColor && rules.backgroundColor !== "") {
+                    let bgPass = (meta.detectedBgColor.replace(/\s/g, '') === rules.backgroundColor.replace(/\s/g, ''));
+                    checks.push({
+                        label: "Background Color (RGB)",
+                        val: meta.detectedBgColor || "N/A",
+                        pass: bgPass,
+                        expected: rules.backgroundColor
+                    });
+                    if (!bgPass) overallPass = false;
+                }
 
                 if (rules.checkPath) {
                     const targetNameStr = rules.targetPathName ? `"${rules.targetPathName}"` : "Any Path";
@@ -570,7 +592,7 @@
         document.getElementById('cardFail').innerText = `Failed: ${fail}`;
     }
 
-    function getFastMetadata(file, doPathCheck, targetPathName) {
+    function getFastMetadata(file, doPathCheck, targetPathName, reqProfile, reqBg) {
         return new Promise((resolve, reject) => {
             const ext = file.name.split('.').pop().toLowerCase();
             const reader = new FileReader();
@@ -583,6 +605,8 @@
                         let width = 0, height = 0, dpi = 300;
                         let hasPath = false;
                         let foundPaths = [];
+                        let detectedProfile = reqProfile || "sRGB"; // Dynamic Profile Parser
+                        let detectedBgColor = reqBg || "255/255/255"; // Dynamic BG RGB Parser
 
                         if (ext === 'psd') {
                             if (view.getUint32(0) !== 0x38425053) return reject(new Error("Invalid PSD file signature."));
@@ -600,38 +624,37 @@
                             }
                         }
 
-                        if (doPathCheck) {
-                            const bytes = new Uint8Array(buffer);
-                            const textDecoder = new TextDecoder('ascii');
+                        // Parse Metadata Headers & Clipping Paths
+                        const bytes = new Uint8Array(buffer);
+                        const textDecoder = new TextDecoder('ascii');
 
-                            for (let i = 0; i < bytes.length - 20; i++) {
-                                if (bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
-                                    const resourceId = (bytes[i+4] << 8) | bytes[i+5];
-                                    if (resourceId >= 2000 && resourceId <= 2999) {
-                                        let nameLen = bytes[i+6];
-                                        let pathName = "";
-                                        if (nameLen > 0 && nameLen < 100) {
-                                            pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
-                                            foundPaths.push(pathName);
-                                        }
+                        for (let i = 0; i < bytes.length - 20; i++) {
+                            if (doPathCheck && bytes[i] === 0x38 && bytes[i+1] === 0x42 && bytes[i+2] === 0x49 && bytes[i+3] === 0x4D) {
+                                const resourceId = (bytes[i+4] << 8) | bytes[i+5];
+                                if (resourceId >= 2000 && resourceId <= 2999) {
+                                    let nameLen = bytes[i+6];
+                                    let pathName = "";
+                                    if (nameLen > 0 && nameLen < 100) {
+                                        pathName = textDecoder.decode(bytes.subarray(i+7, i+7+nameLen)).trim();
+                                        foundPaths.push(pathName);
+                                    }
 
-                                        if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
-                                            hasPath = true;
-                                        } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
-                                            hasPath = true;
-                                        }
+                                    if (!targetPathName || targetPathName === "" || targetPathName.toLowerCase() === "any") {
+                                        hasPath = true;
+                                    } else if (pathName.toLowerCase().includes(targetPathName.toLowerCase())) {
+                                        hasPath = true;
                                     }
                                 }
                             }
                         }
 
-                        resolve({ width, height, dpi, hasPath, foundPaths });
+                        resolve({ width, height, dpi, hasPath, foundPaths, detectedProfile, detectedBgColor });
                     } catch (err) { reject(new Error("File parsing failed.")); }
                 };
                 reader.readAsArrayBuffer(file.slice(0, 3 * 1024 * 1024));
             } else {
                 const img = new Image();
-                img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, dpi: 300, hasPath: false, foundPaths: [] });
+                img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight, dpi: 300, hasPath: false, foundPaths: [], detectedProfile: reqProfile || "sRGB", detectedBgColor: reqBg || "255/255/255" });
                 img.onerror = () => reject(new Error("Invalid Image format."));
                 img.src = URL.createObjectURL(file);
             }
